@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, FormEvent } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   collection,
@@ -153,11 +154,12 @@ export default function Page() {
               >
                 {user ? "You are signed in" : "Sign in with Google"}
               </button>
-              <button
+              <Link
+                href="/browse"
                 className="rounded-full border border-base-800 bg-base-900 px-5 py-3 text-sm font-semibold text-base-200 transition hover:border-base-500 hover:text-base-50"
               >
                 Browse experiences
-              </button>
+              </Link>
             </motion.div>
           </div>
 
