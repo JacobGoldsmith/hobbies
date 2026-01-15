@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { doc, getDoc, type Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { addDoc, collection, doc, getDoc, getDocs, limit, query, where, type Timestamp } from "firebase/firestore";
+import { auth, db, onAuthChange, serverTime } from "@/lib/firebase";
+import type { User } from "firebase/auth";
 
 const fadeInUp = {
   initial: { opacity: 0, y: 14 },
@@ -29,6 +30,7 @@ type Host = {
 };
 
 type LoadState = "loading" | "ready" | "not-found" | "error";
+type RequestState = { type: "idle" | "loading" | "success" | "error"; message?: string };
 
 export default function HobbyDetailPage() {
   const params = useParams<{ hobbyId: string }>();
@@ -37,6 +39,13 @@ export default function HobbyDetailPage() {
   const [hobby, setHobby] = useState<Hobby | null>(null);
   const [host, setHost] = useState<Host | null>(null);
   const [state, setState] = useState<LoadState>("loading");
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [request, setRequest] = useState<RequestState>({ type: "idle" });
+
+  useEffect(() => {
+    const unsub = onAuthChange((u) => setUser(u));
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (!hobbyId) return;
@@ -91,6 +100,45 @@ export default function HobbyDetailPage() {
       active = false;
     };
   }, [hobbyId]);
+
+  const handleRequest = async () => {
+    if (!hobby) return;
+    if (!user) {
+      setRequest({ type: "error", message: "Please sign in to request a lesson." });
+      return;
+    }
+
+    try {
+      setRequest({ type: "loading", message: "Sending request..." });
+
+      const existing = await getDocs(
+        query(
+          collection(db, "bookingRequests"),
+          where("hobbyId", "==", hobby.id),
+          where("guestId", "==", user.uid),
+          limit(1)
+        )
+      );
+
+      if (!existing.empty) {
+        setRequest({ type: "success", message: "Request already submitted." });
+        return;
+      }
+
+      await addDoc(collection(db, "bookingRequests"), {
+        hobbyId: hobby.id,
+        hostId: hobby.hostId,
+        guestId: user.uid,
+        status: "pending",
+        createdAt: serverTime(),
+      });
+
+      setRequest({ type: "success", message: "Request sent to the host." });
+    } catch (error) {
+      console.error(error);
+      setRequest({ type: "error", message: "Could not send request. Try again." });
+    }
+  };
 
   const heroCopy = useMemo(
     () => ({
@@ -183,12 +231,22 @@ export default function HobbyDetailPage() {
             </div>
 
             <motion.button
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              className="flex w-full items-center justify-center rounded-xl bg-base-50 px-4 py-3 text-base-900 font-semibold shadow-glow transition hover:shadow-lg"
+              whileHover={request.type === "idle" ? { y: -2, scale: 1.01 } : undefined}
+              whileTap={request.type === "idle" ? { scale: 0.99 } : undefined}
+              disabled={request.type === "loading" || request.type === "success"}
+              onClick={handleRequest}
+              className="flex w-full items-center justify-center rounded-xl bg-base-50 px-4 py-3 text-base-900 font-semibold shadow-glow transition hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-80"
             >
-              Request Lesson
+              {request.type === "loading" && "Sending..."}
+              {request.type === "success" && "Request sent"}
+              {request.type === "idle" && "Request Lesson"}
+              {request.type === "error" && "Request Lesson"}
             </motion.button>
+            {request.message && (
+              <p className={`text-sm ${request.type === "error" ? "text-red-400" : "text-emerald-300"}`}>
+                {request.message}
+              </p>
+            )}
 
             <div className="card-border rounded-2xl bg-base-900/70 p-5 text-sm text-base-400">
               <p className="font-semibold text-base-200">Details</p>
