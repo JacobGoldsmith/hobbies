@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { collection, getDocs, orderBy, query, where, Timestamp } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
@@ -100,14 +101,17 @@ export default function BrowsePage() {
           ) : (
             <div className="grid auto-rows-[1fr] gap-6 md:grid-cols-12">
               {hobbies.map((hobby, idx) => (
-                <motion.div
-                  key={hobby.id}
-                  {...fadeInUp}
-                  transition={{ ...fadeInUp.transition, delay: Math.min(0.04 * idx, 0.3) }}
-                  className={cardSpanClass(idx)}
-                >
-                  <HobbyCard hobby={hobby} />
-                </motion.div>
+                <Link key={hobby.id} href={`/hobbies/${hobby.id}`} className={cardSpanClass(idx)}>
+                  <motion.div
+                    {...fadeInUp}
+                    transition={{ ...fadeInUp.transition, delay: Math.min(0.04 * idx, 0.3) }}
+                    whileHover={{ y: -3, scale: 1.01 }}
+                    whileTap={{ scale: 0.995 }}
+                    className="h-full"
+                  >
+                    <HobbyCard hobby={hobby} />
+                  </motion.div>
+                </Link>
               ))}
             </div>
           )}
@@ -119,7 +123,7 @@ export default function BrowsePage() {
 
 function HobbyCard({ hobby }: { hobby: Hobby }) {
   return (
-    <div className="card-border group flex h-full flex-col overflow-hidden rounded-2xl bg-base-900/70">
+    <div className="card-border flex h-full flex-col overflow-hidden rounded-2xl bg-base-900/70 transition-colors hover:border-base-700">
       <div className="relative h-44 w-full overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-base-800 via-base-900 to-base-900" />
         <div className="absolute inset-0 animate-pulse bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.06),transparent_32%),radial-gradient(circle_at_80%_0%,rgba(94,234,212,0.06),transparent_28%)]" />
@@ -128,7 +132,7 @@ function HobbyCard({ hobby }: { hobby: Hobby }) {
       <div className="flex flex-1 flex-col gap-3 px-5 py-5">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold text-base-50">{hobby.title}</h3>
-          <span className="rounded-full border border-base-800 bg-base-900 px-3 py-1 text-xs font-semibold text-base-100 shadow-glow transition duration-200 group-hover:-translate-y-0.5 group-hover:border-base-600">
+          <span className="rounded-full border border-base-800 bg-base-900 px-3 py-1 text-xs font-semibold text-base-100 shadow-glow transition duration-200">
             ${hobby.pricePerHour.toFixed(0)}/hr
           </span>
         </div>
